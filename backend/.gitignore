@@ -83,3 +83,4 @@ models/*.pkl
 uploads/
 public/uploads/
 
+config/firebase-service-account.json
