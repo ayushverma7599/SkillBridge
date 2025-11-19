@@ -1,12 +1,16 @@
 // backend/server.js
+
 // Enhanced SmartHub API Server with complete middleware & setup
 
 const express = require('express');
+const http = require('http');  // ✅ ADD THIS
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
+const socketIO = require('socket.io');
+const profileRoutes = require('./routes/profile');
 require('dotenv').config();
 
 // Database & Firebase
@@ -20,17 +24,31 @@ const projectRoutes = require('./routes/projects');
 const milestoneRoutes = require('./routes/milestones');
 const paymentRoutes = require('./routes/payments');
 const messageRoutes = require('./routes/messages');
+const recommendationRoutes = require('./routes/recommendations');
 
 // App initialization
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// ✅ CREATE HTTP SERVER FIRST (required for Socket.IO)
+const server = http.createServer(app);
+
+// ✅ Socket.IO setup with CORS
+const io = socketIO(server, {
+  cors: {
+    origin: "*", // Update with your frontend URL in production
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
 
 // ===== DATABASE CONNECTION =====
 const testConnection = async () => {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connection established successfully');
-    
+
     // Sync models with database
     if (process.env.NODE_ENV === 'development') {
       await sequelize.sync({ alter: true });
@@ -51,7 +69,7 @@ app.use(helmet());
 
 // CORS configuration
 app.use(cors({
-  origin: ['http://localhost:8081', 'http://localhost:3000', 'http://127.0.0.1:8081'],
+  origin: ['http://localhost:8081', 'http://localhost:3000', 'http://127.0.0.1:8081', 'http://192.168.1.*'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -60,6 +78,40 @@ app.use(cors({
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// ✅ Make io accessible in routes
+app.set('io', io);
+
+// ✅ Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('✅ User connected:', socket.id);
+  
+  // Join user-specific room
+  socket.on('join', (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`User ${userId} joined their room`);
+  });
+  
+  // Handle project application notification
+  socket.on('project_application', (data) => {
+    io.to(`user_${data.freelancerId}`).emit('notification', {
+      type: 'project_application',
+      message: `${data.studentName} applied to your project: ${data.projectTitle}`,
+      timestamp: new Date(),
+      read: false
+    });
+  });
+  
+  // Handle disconnect
+  socket.on('disconnect', () => {
+    console.log('❌ User disconnected:', socket.id);
+  });
+  
+  // Handle errors
+  socket.on('error', (error) => {
+    console.error('❌ Socket error:', error);
+  });
+});
 
 // Logging middleware
 if (process.env.NODE_ENV === 'development') {
@@ -73,8 +125,8 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: '⚠️ Too many requests from this IP, please try again later.',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 app.use('/api/', limiter);
@@ -88,6 +140,9 @@ app.use((req, res, next) => {
   });
   next();
 });
+
+// Serve static files for uploads
+app.use('/uploads', express.static('uploads'));
 
 // ===== HEALTH CHECK =====
 app.get('/health', (req, res) => {
@@ -115,6 +170,8 @@ app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/milestones', milestoneRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/messages', messageRoutes);
+app.use('/api/v1/profile', profileRoutes);
+app.use('/api/v1/recommendations', recommendationRoutes);
 
 // Root API endpoint
 app.get('/api', (req, res) => {
@@ -129,6 +186,8 @@ app.get('/api', (req, res) => {
       milestones: '/api/v1/milestones',
       payments: '/api/v1/payments',
       messages: '/api/v1/messages',
+      profile: '/api/v1/profile',
+      recommendations: '/api/v1/recommendations',
     },
   });
 });
@@ -173,11 +232,13 @@ const startServer = async () => {
     initializeFirebase();
     console.log('✅ Firebase initialized');
 
-    // Start server
-    app.listen(PORT, () => {
+    // ✅ START SERVER WITH HTTP (for Socket.IO)
+    server.listen(PORT, () => {
       console.log('\n' + '='.repeat(60));
       console.log('🚀 SmartHub API Server Successfully Started');
       console.log('='.repeat(60));
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🔌 Socket.IO ready for real-time connections`);
       console.log(`📍 Local URL: http://localhost:${PORT}`);
       console.log(`🌍 API Base: http://localhost:${PORT}/api/v1`);
       console.log(`💻 Health Check: http://localhost:${PORT}/health`);
@@ -187,18 +248,20 @@ const startServer = async () => {
 
       // Log available endpoints
       console.log('📋 Available Endpoints:');
-      console.log('   ✓ /api/v1/auth      (Authentication & Authorization)');
-      console.log('   ✓ /api/v1/users     (User Management)');
-      console.log('   ✓ /api/v1/projects  (Project Management)');
-      console.log('   ✓ /api/v1/milestones(Milestone Tracking)');
-      console.log('   ✓ /api/v1/payments  (Payment Processing)');
-      console.log('   ✓ /api/v1/messages  (Messaging & Chat)\n');
+      console.log(' ✓ /api/v1/auth (Authentication & Authorization)');
+      console.log(' ✓ /api/v1/users (User Management)');
+      console.log(' ✓ /api/v1/projects (Project Management)');
+      console.log(' ✓ /api/v1/milestones (Milestone Tracking)');
+      console.log(' ✓ /api/v1/payments (Payment Processing)');
+      console.log(' ✓ /api/v1/messages (Messaging & Chat)');
+      console.log(' ✓ /api/v1/profile (Profile Management)');
+      console.log(' ✓ /api/v1/recommendations (AI Recommendations)\n');
     });
 
     // Handle graceful shutdown
     process.on('SIGTERM', () => {
       console.log('SIGTERM signal received: closing HTTP server');
-      app.close(() => {
+      server.close(() => {
         console.log('HTTP server closed');
         sequelize.close().then(() => {
           console.log('Database connection closed');

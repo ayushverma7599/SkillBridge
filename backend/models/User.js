@@ -1,31 +1,54 @@
-// backend/models/User.js
 module.exports = (sequelize, DataTypes) => {
   const User = sequelize.define('User', {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true
+    },
     fullName: {
       type: DataTypes.STRING,
       allowNull: false
     },
     email: {
       type: DataTypes.STRING,
-      allowNull: false,
-      unique: true
+      unique: true,
+      allowNull: false
     },
     password: {
       type: DataTypes.STRING,
       allowNull: false
     },
     userType: {
+      type: DataTypes.ENUM('student', 'freelancer'),
+      defaultValue: 'student'
+    },
+    avatar: {
+      type: DataTypes.STRING,  // ADD THIS FIELD
+      allowNull: true,
+      defaultValue: null
+    },
+    bio: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    skills: {
+      type: DataTypes.JSONB,  // For PostgreSQL
+      allowNull: true,
+      defaultValue: []
+    },
+    university: {
       type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'student' // student, freelancer, admin
+      allowNull: true
+    },
+    course: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    year: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     }
-    // yahan extra fields add kar sakte ho (photo, firebaseUid, etc.)
-  }, {});
-
-  // Future associations (e.g. User.hasMany(Project))
-  User.associate = (models) => {
-    // associations likh sakte ho, optional
-  };
+  });
 
   return User;
 };
