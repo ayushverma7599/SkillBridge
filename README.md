@@ -2,7 +2,7 @@
 
 A comprehensive platform that empowers students with AI-powered freelancing opportunities, peer collaboration networks, and academic integration features.
 
-## ��� Features
+## ��� Features
 
 - **Smart Project Matching**: AI-powered freelancing project recommendations
 - **Campus Opportunity Board**: Live campus-specific projects and opportunities  
@@ -11,7 +11,7 @@ A comprehensive platform that empowers students with AI-powered freelancing oppo
 - **Academic Integration**: Course credit tracking and faculty supervision
 - **Financial Management**: Secure payment processing and earnings tracking
 
-## ��� Technology Stack
+## ��� Technology Stack
 
 ### Frontend
 - **React Native** with Expo SDK 51
@@ -36,7 +36,7 @@ A comprehensive platform that empowers students with AI-powered freelancing oppo
 - PostgreSQL or MongoDB
 - Firebase account
 
-## ��� Quick Start
+## ��� Quick Start
 
 1. **Clone the repository:**
 
@@ -48,10 +48,22 @@ A comprehensive platform that empowers students with AI-powered freelancing oppo
 
 4. **Start development servers:**
 
-## ��� Project Structure
+## ��� Project Structure
+smarthub-campus-freelancing/
+├── backend/ # Node.js API server
+│ ├── src/ # Source code
+│ ├── tests/ # Backend tests
+│ └── config/ # Configuration files
+├── frontend/ # React Native mobile app
+│ ├── src/ # Source code
+│ ├── assets/ # Images, fonts, icons
+│ └── components/ # Reusable components
+├── shared/ # Shared utilities and types
+├── docs/ # Documentation
+├── deployment/ # Docker and deployment configs
+└── scripts/ # Setup and utility scripts
 
-
-## ��� Contributing
+## ��� Contributing
 
 1. Fork the repository
 2. Create your feature branch (`git checkout -b feature/amazing-feature`)
@@ -59,11 +71,11 @@ A comprehensive platform that empowers students with AI-powered freelancing oppo
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## ��� License
+## ��� License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## ��� Support
+## ��� Support
 
 For support and questions, please open an issue in the GitHub repository.
 EOF
