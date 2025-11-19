@@ -1,30 +1,79 @@
+
 import axios from 'axios';
-import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
-// Apne backend ka IP ya localhost (for web) set karo yahaan
-const API_URL = 'http://192.168.1.18:5000/api/v1'; // Replace 192.168.1.X with your machine IP
+const API_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'http://localhost:5000/api/v1';
 
-const api = axios.create({
+const apiClient = axios.create({
   baseURL: API_URL,
   timeout: 10000,
-  headers: { 'Content-Type': 'application/json' },
 });
 
-api.interceptors.request.use(
+// ✅ Platform-specific storage helper
+export const storage = {
+  async getItem(key) {
+    if (Platform.OS === 'web') {
+      return localStorage.getItem(key);
+    }
+    const SecureStore = require('expo-secure-store');
+    return await SecureStore.getItemAsync(key);
+  },
+  
+  async setItem(key, value) {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+    } else {
+      const SecureStore = require('expo-secure-store');
+      await SecureStore.setItemAsync(key, value);
+    }
+  },
+  
+  async deleteItem(key) {
+    if (Platform.OS === 'web') {
+      localStorage.removeItem(key);
+    } else {
+      const SecureStore = require('expo-secure-store');
+      await SecureStore.deleteItemAsync(key);
+    }
+  }
+};
+
+// Add token to all requests
+apiClient.interceptors.request.use(
   async (config) => {
-    const token = await SecureStore.getItemAsync('token').catch(() => null);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await storage.getItem('token');
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } catch (error) {
+      console.error('Token fetch error:', error);
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
+// Handle 401 errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      await storage.deleteItem('token');
+      await storage.deleteItem('user');
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Export authAPI
 export const authAPI = {
-  register: (data) => api.post('/auth/register', data),
-  login: (data) => api.post('/auth/login', data),
-  getCurrentUser: () => api.get('/auth/me'),
+  login: async ({ email, password }) => {
+    return apiClient.post('/auth/login', { email, password });
+  },
+  register: async (userData) => {
+    return apiClient.post('/auth/register', userData);
+  },
 };
 
-export default api;
+export default apiClient;

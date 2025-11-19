@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert, SafeAreaView, TextInput, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import { 
+  View, 
+  StyleSheet, 
+  Alert, 
+  SafeAreaView, 
+  TextInput, 
+  TouchableOpacity, 
+  Text, 
+  ActivityIndicator 
+} from 'react-native';
 import { useRouter } from 'expo-router';
-import { authAPI } from '../../services/api';
+import { authAPI, storage } from '../../services/api';
 
 export default function LoginScreen() {
   const router = useRouter();
-
   const [email, setEmail] = useState('testuser@example.com');
   const [password, setPassword] = useState('Test@123');
   const [loading, setLoading] = useState(false);
@@ -19,15 +27,27 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       console.log('Login attempt with:', email);
+      
       const response = await authAPI.login({ email, password });
-      console.log('Login response:', response);
+      console.log('Login response:', response.data);
+
+      if (response.data && response.data.token) {
+        await storage.setItem('token', response.data.token);
+        console.log('✅ Token saved');
+      }
+      
+      if (response.data && response.data.user) {
+        await storage.setItem('user', JSON.stringify(response.data.user));
+        console.log('✅ User data saved');
+      }
 
       Alert.alert('Success', 'Login successful!');
-      router.replace('/(tabs)');  // ya apna proper home route yahan rakho
+      router.replace('/(tabs)');
+      
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Login failed. Please try again.';
       Alert.alert('Login Error', errorMessage);
-      console.log('Login failed:', errorMessage);
+      console.error('Login failed:', error);
     } finally {
       setLoading(false);
     }
@@ -37,11 +57,39 @@ export default function LoginScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>Login</Text>
-        <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} keyboardType="email-address" autoCapitalize="none" editable={!loading} />
-        <TextInput placeholder="Password" value={password} onChangeText={setPassword} style={styles.input} secureTextEntry autoCapitalize="none" editable={!loading} />
-        <TouchableOpacity onPress={handleLogin} disabled={loading} style={[styles.loginButton, loading && { opacity: 0.6 }]}>
-          {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginButtonText}>Login</Text>}
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Email"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          placeholderTextColor="#999"
+        />
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          autoCapitalize="none"
+          placeholderTextColor="#999"
+        />
+        
+        <TouchableOpacity 
+          style={styles.loginButton} 
+          onPress={handleLogin}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.loginButtonText}>Login</Text>
+          )}
         </TouchableOpacity>
+        
         <TouchableOpacity onPress={() => router.push('/auth/register')}>
           <Text style={styles.registerLink}>Don't have an account? Register</Text>
         </TouchableOpacity>
