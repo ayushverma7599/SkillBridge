@@ -31,11 +31,26 @@ module.exports = (sequelize, DataTypes) => {
     freelancerId: {
       type: DataTypes.INTEGER,
       allowNull: false
+    },
+    // Set when the poster's account is tied to a verified college, so the
+    // project can be shown as "Posted by <College>" campus work.
+    collegeId: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    // Rough weekly time commitment the poster expects. Used client-side to
+    // warn a student if a project would blow past their safe workload.
+    estimatedHoursPerWeek: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     }
   }, {});
 
   Project.associate = (models) => {
     Project.belongsTo(models.User, { foreignKey: 'freelancerId', as: 'freelancer' });
+    Project.belongsTo(models.College, { foreignKey: 'collegeId', as: 'college' });
+    Project.hasMany(models.Application, { foreignKey: 'projectId', as: 'applications' });
+    Project.hasMany(models.Milestone, { foreignKey: 'projectId', as: 'milestones' });
   };
 
   return Project;

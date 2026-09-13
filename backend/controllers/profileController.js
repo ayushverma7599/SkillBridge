@@ -55,7 +55,12 @@ exports.updateProfile = async (req, res) => {
     // Update fields
     if (fullName) user.fullName = fullName;
     if (bio) user.bio = bio;
-    if (skills) user.skills = JSON.stringify(skills);
+    // `skills` is a JSONB column — Sequelize serializes JS arrays to it
+    // automatically. JSON.stringify()-ing here double-encodes the value
+    // (it gets stored as the literal string '["React","Node"]' instead of
+    // an actual array), which then made `profile.skills.map(...)` crash on
+    // the frontend for any profile that had ever been saved through here.
+    if (skills) user.skills = skills;
     if (university) user.university = university;
     if (course) user.course = course;
     if (year) user.year = year;

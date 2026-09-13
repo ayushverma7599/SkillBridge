@@ -1,11 +1,12 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
+const { findCollegeByEmail } = require('../services/verificationService');
 
 // Register Controller
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, password, userType } = req.body;
+    const { fullName, email, password, userType, university, course, year } = req.body;
 
     // Validation
     if (!fullName || !email || !password || !userType) {
@@ -18,6 +19,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
+    // Campus verification: match the email domain against known colleges.
+    const college = await findCollegeByEmail(email);
+
     // Hash password
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -27,7 +31,12 @@ exports.register = async (req, res) => {
       fullName,
       email,
       password: hashedPassword,
-      userType
+      userType,
+      university: university || college?.name || null,
+      course: course || null,
+      year: year || null,
+      collegeId: college ? college.id : null,
+      isVerified: !!college,
     });
 
     // Generate JWT token
@@ -38,13 +47,17 @@ exports.register = async (req, res) => {
     );
 
     res.status(201).json({
-      message: 'User registered successfully',
+      message: college
+        ? `Registered and verified as a ${college.name} student`
+        : "Registered — your email domain isn't a recognised campus yet, so your account is unverified",
       token,
       user: {
         id: user.id,
         fullName: user.fullName,
         email: user.email,
-        userType: user.userType
+        userType: user.userType,
+        isVerified: user.isVerified,
+        university: user.university,
       }
     });
   } catch (error) {
@@ -89,7 +102,9 @@ exports.login = async (req, res) => {
         id: user.id,
         fullName: user.fullName,
         email: user.email,
-        userType: user.userType
+        userType: user.userType,
+        isVerified: user.isVerified,
+        university: user.university,
       }
     });
   } catch (error) {

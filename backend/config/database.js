@@ -3,9 +3,9 @@ require('dotenv').config();
 
 module.exports = {
   development: {
-    username: process.env.DB_USER || 'smarthub_admin',
+    username: process.env.DB_USER || 'skillbridge_admin',
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME || 'smarthub_db',
+    database: process.env.DB_NAME || 'skillbridge_db',
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
@@ -18,9 +18,9 @@ module.exports = {
     }
   },
   test: {
-    username: process.env.DB_USER || 'smarthub_admin',
+    username: process.env.DB_USER || 'skillbridge_admin',
     password: process.env.DB_PASSWORD,
-    database: 'smarthub_test_db',
+    database: 'skillbridge_test_db',
     host: process.env.DB_HOST || 'localhost',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',

@@ -23,7 +23,7 @@ module.exports = (sequelize, DataTypes) => {
   }, {});
 
   Application.associate = (models) => {
-    Application.belongsTo(models.Project, { foreignKey: 'projectId' });
+    Application.belongsTo(models.Project, { foreignKey: 'projectId', as: 'project' });
     Application.belongsTo(models.User, { foreignKey: 'studentId', as: 'student' });
   };
 

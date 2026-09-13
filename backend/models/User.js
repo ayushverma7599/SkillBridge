@@ -19,8 +19,26 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: false
     },
     userType: {
-      type: DataTypes.ENUM('student', 'freelancer'),
+      // 'student': can browse/apply to projects and log academic schedule
+      // 'freelancer': legacy name for a student who *posts* project/task work
+      // 'college': a college/university account that posts verified campus work
+      type: DataTypes.ENUM('student', 'freelancer', 'college'),
       defaultValue: 'student'
+    },
+    collegeId: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    // true when the registration email's domain matched a known college
+    // domain in the College table (see backend/services/verificationService.js)
+    isVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    // Optional manual override of the auto-computed weekly freelance hour cap.
+    maxWeeklyHoursOverride: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     },
     avatar: {
       type: DataTypes.STRING,  // ADD THIS FIELD
@@ -49,6 +67,11 @@ module.exports = (sequelize, DataTypes) => {
       allowNull: true
     }
   });
+
+  User.associate = (models) => {
+    User.belongsTo(models.College, { foreignKey: 'collegeId', as: 'college' });
+    User.hasMany(models.ScheduleItem, { foreignKey: 'userId', as: 'scheduleItems' });
+  };
 
   return User;
 };

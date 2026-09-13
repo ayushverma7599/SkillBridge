@@ -1,5 +1,5 @@
 -- backend/config/database.sql
--- SmartHub Database Schema
+-- SkillBridge Database Schema
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";

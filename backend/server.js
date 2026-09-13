@@ -1,6 +1,6 @@
 // backend/server.js
 
-// Enhanced SmartHub API Server with complete middleware & setup
+// Enhanced SkillBridge API Server with complete middleware & setup
 
 const express = require('express');
 const http = require('http');  // ✅ ADD THIS
@@ -13,18 +13,22 @@ const socketIO = require('socket.io');
 const profileRoutes = require('./routes/profile');
 require('dotenv').config();
 
-// Database & Firebase
+// Database
 const { sequelize } = require('./models');
-const { initializeFirebase } = require('./config/firebase');
+const { seedColleges } = require('./services/verificationService');
+const { seedLearningContent } = require('./services/learningSeedService');
+const { seedProjects } = require('./services/projectSeedService');
 
 // Routes
 const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/user.routes');
 const projectRoutes = require('./routes/projects');
 const milestoneRoutes = require('./routes/milestones');
 const paymentRoutes = require('./routes/payments');
 const messageRoutes = require('./routes/messages');
 const recommendationRoutes = require('./routes/recommendations');
+const scheduleRoutes = require('./routes/schedule');
+const collegeRoutes = require('./routes/colleges');
+const learningRoutes = require('./routes/learning');
 
 // App initialization
 const app = express();
@@ -67,9 +71,16 @@ const testConnection = async () => {
 // Security headers
 app.use(helmet());
 
-// CORS configuration
+// CORS configuration — any localhost/127.0.0.1 port is allowed in dev, since
+// Expo/Metro picks a different port whenever 8081 is already taken (e.g.
+// when running a second preview alongside the main dev server).
 app.use(cors({
-  origin: ['http://localhost:8081', 'http://localhost:3000', 'http://127.0.0.1:8081', 'http://192.168.1.*'],
+  origin: (origin, callback) => {
+    if (!origin || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -148,7 +159,7 @@ app.use('/uploads', express.static('uploads'));
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'success',
-    message: '🚀 SmartHub API is running',
+    message: '🚀 SkillBridge API is running',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
@@ -165,29 +176,33 @@ app.get('/api/health', (req, res) => {
 
 // ===== API ROUTES =====
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/milestones', milestoneRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/messages', messageRoutes);
 app.use('/api/v1/profile', profileRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
+app.use('/api/v1/schedule', scheduleRoutes);
+app.use('/api/v1/colleges', collegeRoutes);
+app.use('/api/v1/learning', learningRoutes);
 
 // Root API endpoint
 app.get('/api', (req, res) => {
   res.json({
-    name: 'SmartHub API',
+    name: 'SkillBridge API',
     version: '1.0.0',
     status: 'running',
     endpoints: {
       auth: '/api/v1/auth',
-      users: '/api/v1/users',
       projects: '/api/v1/projects',
       milestones: '/api/v1/milestones',
       payments: '/api/v1/payments',
       messages: '/api/v1/messages',
       profile: '/api/v1/profile',
       recommendations: '/api/v1/recommendations',
+      schedule: '/api/v1/schedule',
+      colleges: '/api/v1/colleges',
+      learning: '/api/v1/learning',
     },
   });
 });
@@ -223,19 +238,24 @@ app.use((err, req, res, next) => {
 // ===== SERVER INITIALIZATION =====
 const startServer = async () => {
   try {
-    console.log('\n🔧 Starting SmartHub API Server...\n');
+    console.log('\n🔧 Starting SkillBridge API Server...\n');
 
     // Test database connection
     await testConnection();
 
-    // Initialize Firebase
-    initializeFirebase();
-    console.log('✅ Firebase initialized');
+    // Seed the campus-verification college list (no-op if already seeded)
+    await seedColleges();
+
+    // Seed the Learning Gap Detector's concept/question bank (no-op if already seeded)
+    await seedLearningContent();
+
+    // Seed demo projects for the Projects board + recommendations (no-op if already seeded)
+    await seedProjects();
 
     // ✅ START SERVER WITH HTTP (for Socket.IO)
     server.listen(PORT, () => {
       console.log('\n' + '='.repeat(60));
-      console.log('🚀 SmartHub API Server Successfully Started');
+      console.log('🚀 SkillBridge API Server Successfully Started');
       console.log('='.repeat(60));
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`🔌 Socket.IO ready for real-time connections`);
@@ -249,13 +269,14 @@ const startServer = async () => {
       // Log available endpoints
       console.log('📋 Available Endpoints:');
       console.log(' ✓ /api/v1/auth (Authentication & Authorization)');
-      console.log(' ✓ /api/v1/users (User Management)');
       console.log(' ✓ /api/v1/projects (Project Management)');
       console.log(' ✓ /api/v1/milestones (Milestone Tracking)');
       console.log(' ✓ /api/v1/payments (Payment Processing)');
       console.log(' ✓ /api/v1/messages (Messaging & Chat)');
       console.log(' ✓ /api/v1/profile (Profile Management)');
-      console.log(' ✓ /api/v1/recommendations (AI Recommendations)\n');
+      console.log(' ✓ /api/v1/recommendations (AI Recommendations)');
+      console.log(' ✓ /api/v1/schedule (Academic Schedule & Workload Manager)');
+      console.log(' ✓ /api/v1/colleges (Campus Verification)\n');
     });
 
     // Handle graceful shutdown
