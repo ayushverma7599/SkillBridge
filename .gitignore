@@ -2,6 +2,9 @@
 node_modules/
 */node_modules/
 
+# Local Claude Code tooling (dev-server launch config for the browser preview)
+.claude/
+
 # Environment variables
 .env
 .env.local

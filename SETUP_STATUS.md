@@ -1,1 +1,1 @@
-# SmartHub Development Setup Complete
+# SkillBridge Development Setup Complete

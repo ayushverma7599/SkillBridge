@@ -1,6 +1,8 @@
 #!/bin/bash
+# Run this from inside scripts/:  cd scripts && ./dev-setup.sh
+# (or `npm run setup` from inside scripts/, once you've run `npm install` there)
 
-echo "íº€ Setting up SmartHub Development Environment..."
+echo "ğŸš€ Setting up SkillBridge Development Environment..."
 
 # Check if Node.js is installed
 if ! command -v node &> /dev/null; then
@@ -10,34 +12,32 @@ fi
 
 # Check if Expo CLI is installed
 if ! command -v expo &> /dev/null; then
-    echo "í³± Installing Expo CLI..."
+    echo "ğŸ“¦ Installing Expo CLI..."
     npm install -g @expo/cli
 fi
 
 # Setup backend
-echo "í´§ Setting up backend..."
-cd backend
+echo "ğŸ“¦ Setting up backend..."
+cd ../backend
 if [ ! -f ".env" ]; then
     cp .env.example .env
-    echo "í³ Created backend/.env from template. Please update with your credentials."
+    echo "ğŸ“ Created backend/.env from template. Please update with your credentials."
 fi
 npm install
-cd ..
+cd ../scripts
 
-# Setup frontend
-echo "í³± Setting up frontend..."
-cd frontend
+# Setup frontend (Expo app lives in smarthub-fresh/)
+echo "ğŸ“¦ Setting up frontend..."
+cd ../smarthub-fresh
 if [ ! -f ".env" ]; then
     cp .env.example .env
-    echo "í³ Created frontend/.env from template. Please update with your credentials."
+    echo "ğŸ“ Created smarthub-fresh/.env from template. Please update with your credentials."
 fi
 npm install
-cd ..
+cd ../scripts
 
 echo "âœ… Setup complete! Next steps:"
-echo "1. Update environment variables in backend/.env and frontend/.env"
-echo "2. Set up your database (PostgreSQL or MongoDB)"
-echo "3. Configure Firebase project"
-echo "4. Run 'npm run dev' to start development servers"
-EOF
-
+echo "1. Update environment variables in backend/.env and smarthub-fresh/.env"
+echo "2. Make sure PostgreSQL is running and create the database (see backend/README or COMMANDS.md)"
+echo "3. (Optional) Configure Firebase in smarthub-fresh/config/firebase.js"
+echo "4. Run the backend and frontend dev servers â€” see COMMANDS.md for the exact commands"
