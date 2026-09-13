@@ -5,15 +5,34 @@ import {
   ScrollView,
   Alert,
   Image,
-  TouchableOpacity,
-  SafeAreaView,
   TextInput,
   Text,
-  ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
-import * as SecureStore from 'expo-secure-store';
-import apiClient from '../../services/api'; // ✅ UPDATED: Use apiClient instead of axios
+import apiClient from '../../services/api';
+import AnimatedPressable from '../../components/ui/AnimatedPressable';
+import GradientButton from '../../components/ui/GradientButton';
+import { colors, gradients, radius, spacing, shadow } from '../../constants/appTheme';
+
+// Older saved profiles may have `skills` stored as a JSON-encoded string
+// (a since-fixed backend bug double-encoded it) instead of an array —
+// normalize whatever comes back so the UI never crashes on it.
+function normalizeSkills(skills) {
+  if (Array.isArray(skills)) return skills;
+  if (typeof skills === 'string') {
+    try {
+      const parsed = JSON.parse(skills);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(false);
@@ -33,16 +52,15 @@ export default function ProfileScreen() {
     loadProfile();
   }, []);
 
-  // ✅ UPDATED: Load profile using apiClient (token auto-included)
   const loadProfile = async () => {
     try {
       setLoading(true);
-      const response = await apiClient.get('/profile'); // Token automatically included
+      const response = await apiClient.get('/profile');
       const data = response.data;
-      
+
       setProfile({
         ...data,
-        skills: data.skills || [],
+        skills: normalizeSkills(data.skills),
       });
     } catch (error) {
       Alert.alert('Error', 'Failed to load profile');
@@ -52,13 +70,10 @@ export default function ProfileScreen() {
     }
   };
 
-  // ✅ UPDATED: Update profile using apiClient
   const handleUpdate = async () => {
     try {
       setLoading(true);
-      
-      await apiClient.put('/profile', profile); // Token automatically included
-
+      await apiClient.put('/profile', profile);
       Alert.alert('Success', 'Profile updated successfully');
     } catch (error) {
       Alert.alert('Error', 'Failed to update profile');
@@ -68,7 +83,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // ✅ Image picker for avatar
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -89,7 +103,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // ✅ UPDATED: Upload avatar using apiClient
   const uploadAvatar = async (uri) => {
     try {
       const formData = new FormData();
@@ -100,9 +113,7 @@ export default function ProfileScreen() {
       });
 
       const response = await apiClient.post('/profile/avatar', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       setProfile({ ...profile, avatar: response.data.avatar });
@@ -113,268 +124,215 @@ export default function ProfileScreen() {
     }
   };
 
-  // Add skill to profile
   const addSkill = () => {
     if (skillInput.trim() && !profile.skills.includes(skillInput.trim())) {
-      setProfile({
-        ...profile,
-        skills: [...profile.skills, skillInput.trim()],
-      });
+      setProfile({ ...profile, skills: [...profile.skills, skillInput.trim()] });
       setSkillInput('');
     }
   };
 
-  // Remove skill from profile
   const removeSkill = (skill) => {
-    setProfile({
-      ...profile,
-      skills: profile.skills.filter((s) => s !== skill),
-    });
+    setProfile({ ...profile, skills: profile.skills.filter((s) => s !== skill) });
   };
 
-  if (loading && !profile.email) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-      </View>
-    );
-  }
-
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.card}>
-          <View style={styles.avatarContainer}>
-            <TouchableOpacity onPress={pickImage}>
-              {profile.avatar ? (
-                <Image
-                  source={{ uri: `${process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api/v1', '')}${profile.avatar}` }}
-                  style={styles.avatar}
-                />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>
-                    {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U'}
-                  </Text>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <LinearGradient colors={gradients.hero} style={styles.hero}>
+          <SafeAreaView edges={['top']}>
+            <Animated.View entering={FadeInDown.duration(450)} style={styles.avatarContainer}>
+              <AnimatedPressable onPress={pickImage} style={styles.avatarWrap}>
+                {profile.avatar ? (
+                  <Image
+                    source={{ uri: `${process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api/v1', '')}${profile.avatar}` }}
+                    style={styles.avatar}
+                  />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarText}>
+                      {profile.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U'}
+                    </Text>
+                  </View>
+                )}
+                <View style={styles.cameraBadge}>
+                  <Ionicons name="camera" size={13} color={colors.white} />
                 </View>
-              )}
-            </TouchableOpacity>
-            <Text style={styles.changePhoto}>Tap to change photo</Text>
-          </View>
+              </AnimatedPressable>
+              <Text style={styles.nameText}>{profile.fullName || 'Your name'}</Text>
+              <Text style={styles.emailText}>{profile.email}</Text>
+            </Animated.View>
+          </SafeAreaView>
+        </LinearGradient>
 
+        <Animated.View entering={FadeInDown.delay(150).duration(450)} style={styles.card}>
+          <Text style={styles.sectionTitle}>Basic info</Text>
+
+          <Text style={styles.label}>Full Name</Text>
           <TextInput
             style={styles.input}
-            placeholder="Full Name"
             value={profile.fullName}
             onChangeText={(text) => setProfile({ ...profile, fullName: text })}
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textFaint}
           />
 
-          <TextInput
-            style={[styles.input, styles.disabledInput]}
-            placeholder="Email"
-            value={profile.email}
-            editable={false}
-            placeholderTextColor="#999"
-          />
-
+          <Text style={styles.label}>Bio</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="Bio"
+            placeholder="Tell people about yourself"
             value={profile.bio}
             onChangeText={(text) => setProfile({ ...profile, bio: text })}
             multiline
             numberOfLines={3}
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textFaint}
           />
 
-          <TextInput
-            style={styles.input}
-            placeholder="University"
-            value={profile.university}
-            onChangeText={(text) => setProfile({ ...profile, university: text })}
-            placeholderTextColor="#999"
-          />
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>University</Text>
+              <TextInput
+                style={styles.input}
+                value={profile.university}
+                onChangeText={(text) => setProfile({ ...profile, university: text })}
+                placeholderTextColor={colors.textFaint}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>Year</Text>
+              <TextInput
+                style={styles.input}
+                value={profile.year}
+                onChangeText={(text) => setProfile({ ...profile, year: text })}
+                keyboardType="numeric"
+                placeholderTextColor={colors.textFaint}
+              />
+            </View>
+          </View>
 
+          <Text style={styles.label}>Course</Text>
           <TextInput
             style={styles.input}
-            placeholder="Course"
             value={profile.course}
             onChangeText={(text) => setProfile({ ...profile, course: text })}
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textFaint}
           />
+        </Animated.View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Year"
-            value={profile.year}
-            onChangeText={(text) => setProfile({ ...profile, year: text })}
-            keyboardType="numeric"
-            placeholderTextColor="#999"
-          />
-
-          <Text style={styles.label}>Skills</Text>
-          <View style={styles.skillInputContainer}>
+        <Animated.View entering={FadeInDown.delay(230).duration(450)} style={styles.card}>
+          <Text style={styles.sectionTitle}>Skills</Text>
+          <View style={styles.skillInputRow}>
             <TextInput
               style={[styles.input, styles.skillInput]}
               value={skillInput}
               onChangeText={setSkillInput}
               placeholder="Add a skill"
-              placeholderTextColor="#999"
+              placeholderTextColor={colors.textFaint}
+              onSubmitEditing={addSkill}
             />
-            <TouchableOpacity style={styles.addButton} onPress={addSkill}>
-              <Text style={styles.addButtonText}>Add</Text>
-            </TouchableOpacity>
+            <AnimatedPressable style={styles.addSkillButton} onPress={addSkill}>
+              <Ionicons name="add" size={20} color={colors.white} />
+            </AnimatedPressable>
           </View>
 
           <View style={styles.skillsContainer}>
             {profile.skills.map((skill, index) => (
-              <View key={index} style={styles.chip}>
+              <Animated.View key={skill} entering={FadeIn.delay(index * 40)} style={styles.chip}>
                 <Text style={styles.chipText}>{skill}</Text>
-                <TouchableOpacity onPress={() => removeSkill(skill)}>
-                  <Text style={styles.chipClose}>×</Text>
-                </TouchableOpacity>
-              </View>
+                <AnimatedPressable onPress={() => removeSkill(skill)} haptic={false}>
+                  <Ionicons name="close" size={14} color={colors.textMuted} />
+                </AnimatedPressable>
+              </Animated.View>
             ))}
-          </View>
-
-          <TouchableOpacity
-            style={styles.updateButton}
-            onPress={handleUpdate}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.updateButtonText}>Update Profile</Text>
+            {profile.skills.length === 0 && (
+              <Text style={styles.emptySkills}>No skills added yet</Text>
             )}
-          </TouchableOpacity>
-        </View>
+          </View>
+        </Animated.View>
+
+        <Animated.View entering={FadeInDown.delay(300).duration(450)} style={styles.footer}>
+          <GradientButton title="Save changes" onPress={handleUpdate} loading={loading} />
+        </Animated.View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  card: {
-    margin: 15,
-    padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-  },
-  avatarContainer: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-  },
+  container: { flex: 1, backgroundColor: colors.background },
+  scrollContent: { paddingBottom: 120 },
+  hero: { paddingBottom: spacing.xl, borderBottomLeftRadius: radius.xl, borderBottomRightRadius: radius.xl },
+  avatarContainer: { alignItems: 'center', paddingTop: spacing.sm },
+  avatarWrap: { position: 'relative' },
+  avatar: { width: 96, height: 96, borderRadius: 48, borderWidth: 3, borderColor: 'rgba(255,255,255,0.4)' },
   avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#007AFF',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.4)',
+  },
+  avatarText: { fontSize: 36, color: colors.white, fontWeight: '800' },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.primaryDark,
     alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.white,
   },
-  avatarText: {
-    fontSize: 40,
-    color: '#fff',
-    fontWeight: 'bold',
+  nameText: { fontSize: 18, fontWeight: '800', color: colors.white, marginTop: 12 },
+  emailText: { fontSize: 12.5, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.lg,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    ...shadow.sm,
   },
-  changePhoto: {
-    marginTop: 10,
-    color: '#007AFF',
-  },
+  sectionTitle: { fontSize: 15, fontWeight: '700', color: colors.text, marginBottom: 12 },
+  label: { fontSize: 12, fontWeight: '700', color: colors.textMuted, marginBottom: 6 },
   input: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 15,
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: '#ddd',
-    fontSize: 16,
-  },
-  disabledInput: {
-    backgroundColor: '#e9e9e9',
-    color: '#999',
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  skillInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  skillInput: {
-    flex: 1,
-    marginBottom: 0,
-    marginRight: 10,
-  },
-  addButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 20,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 8,
+    fontSize: 14.5,
+    color: colors.text,
+    marginBottom: 12,
   },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '600',
+  textArea: { height: 72, textAlignVertical: 'top' },
+  row: { flexDirection: 'row', gap: 10 },
+  skillInputRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  skillInput: { flex: 1, marginBottom: 0 },
+  addSkillButton: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  skillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 15,
-  },
+  skillsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e0e0e0',
-    borderRadius: 20,
-    paddingVertical: 8,
+    gap: 6,
+    backgroundColor: colors.primarySoft,
+    borderRadius: radius.full,
+    paddingVertical: 7,
     paddingHorizontal: 12,
-    margin: 4,
   },
-  chipText: {
-    marginRight: 5,
-  },
-  chipClose: {
-    fontSize: 20,
-    color: '#666',
-    fontWeight: 'bold',
-  },
-  updateButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
-    padding: 15,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  updateButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  chipText: { color: colors.primaryDark, fontSize: 12.5, fontWeight: '600' },
+  emptySkills: { color: colors.textFaint, fontSize: 13 },
+  footer: { paddingHorizontal: spacing.lg, marginTop: spacing.lg },
 });

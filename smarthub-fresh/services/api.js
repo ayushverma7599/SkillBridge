@@ -74,6 +74,73 @@ export const authAPI = {
   register: async (userData) => {
     return apiClient.post('/auth/register', userData);
   },
+  getCurrentUser: async () => {
+    return apiClient.get('/auth/me');
+  },
+};
+
+// Campus projects/tasks board
+export const projectAPI = {
+  getAllProjects: async (params = {}) => {
+    return apiClient.get('/projects', { params });
+  },
+  getProjectById: async (id) => {
+    return apiClient.get(`/projects/${id}`);
+  },
+  createProject: async (data) => {
+    return apiClient.post('/projects', data);
+  },
+  applyToProject: async (projectId, coverLetter) => {
+    return apiClient.post('/projects/apply', { projectId, coverLetter });
+  },
+  getMyProjects: async () => {
+    return apiClient.get('/projects/my-projects');
+  },
+  getMyApplications: async () => {
+    return apiClient.get('/projects/my-applications');
+  },
+};
+
+// Academic Schedule & Workload Manager
+export const scheduleAPI = {
+  getSchedule: async () => {
+    return apiClient.get('/schedule');
+  },
+  addItem: async (item) => {
+    return apiClient.post('/schedule', item);
+  },
+  deleteItem: async (id) => {
+    return apiClient.delete(`/schedule/${id}`);
+  },
+  getWorkload: async () => {
+    return apiClient.get('/schedule/workload');
+  },
+};
+
+// Campus verification — list of recognised colleges (used at registration)
+export const collegeAPI = {
+  list: async () => {
+    return apiClient.get('/colleges');
+  },
+};
+
+// AI Learning Gap Detector — diagnostic quizzes, weakness analysis, adaptive study plans
+export const learningAPI = {
+  getSubjects: async () => {
+    return apiClient.get('/learning/subjects');
+  },
+  getQuiz: async (subject) => {
+    return apiClient.get('/learning/quiz', { params: { subject } });
+  },
+  submitAttempt: async (subject, answers) => {
+    return apiClient.post('/learning/attempts', { subject, answers });
+  },
+  getStudyPlan: async (subject) => {
+    return apiClient.get('/learning/study-plan', { params: { subject } });
+  },
+  getAttemptHistory: async (subject) => {
+    return apiClient.get('/learning/attempts', { params: subject ? { subject } : {} });
+  },
 };
 
 export default apiClient;

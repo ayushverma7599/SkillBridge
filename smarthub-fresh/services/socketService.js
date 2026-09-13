@@ -1,7 +1,7 @@
 import io from 'socket.io-client';
-import * as SecureStore from 'expo-secure-store';
+import { storage } from './api';
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api/v1', '') || 'http://192.168.1.X:5000';
+const SOCKET_URL = process.env.EXPO_PUBLIC_API_BASE_URL?.replace('/api/v1', '') || 'http://localhost:5000';
 
 class SocketService {
   constructor() {
@@ -11,8 +11,8 @@ class SocketService {
 
   async connect() {
     try {
-      const token = await SecureStore.getItemAsync('token');
-      const userStr = await SecureStore.getItemAsync('user');
+      const token = await storage.getItem('token');
+      const userStr = await storage.getItem('user');
       const user = userStr ? JSON.parse(userStr) : null;
 
       if (!token || !user) {
